@@ -27,13 +27,13 @@ class Analyzer1(Analyzer):
     __Logger = logging.getLogger(__name__ + ".Analyzer1")
 
     @classmethod
-    def GetCatalogue(cls, Content: bs, Source: str):
+    def GetCatalogue(cls, Response: NetWork) -> list:
         try:
-            NumberOfChaptersText = Content.find("div", attrs={"class": "caption"}).find("span").text
+            NumberOfChaptersText = Response.Bs.find("div", attrs={"class": "caption"}).find("span").text
             NumberOfChapters = int(cls.Finder_1.search(NumberOfChaptersText).group(1))
-            Id = Source.split("/")[-2].split("_")[0]
+            Id = Response.Url.split("/")[-2].split("_")[0]
         except Exception:
-            cls.__Logger.warning(f"解析{Source}的内容失败。")
+            cls.__Logger.warning(f"解析{Response.Url}的内容失败。")
             traceback.print_exc()
             return []
         # Buffer = []
@@ -56,11 +56,11 @@ class Analyzer1(Analyzer):
         # return Buffer
 
     @classmethod
-    def GetText(cls, Content: bs, Source: str) -> str:
+    def GetText(cls, Response: NetWork) -> str:
         try:
-            Result = str(Content.find("div", attrs={"class": "content"}))
+            Result = str(Response.Bs.find("div", attrs={"class": "content"}))
         except Exception:
-            cls.__Logger.warning(f"解析{Source}的内容失败。")
+            cls.__Logger.warning(f"解析{Response.Url}的内容失败。")
             traceback.print_exc()
             return ""
         Text = Result.split("\n")[2:]
@@ -72,9 +72,9 @@ class Analyzer1(Analyzer):
         return Buffer
 
     @classmethod
-    def GetInfo(cls, Content: bs, Source: str) -> dict:
-        Buffer = {"BookName": Content.find("h1").text}
-        Result = cls.Finder_2.search(Content.find("div", attrs={"class": "caption"}).text).group(1).strip(" ")
+    def GetInfo(cls, Response: NetWork) -> dict:
+        Buffer = {"BookName": Response.Bs.find("h1").text}
+        Result = cls.Finder_2.search(Response.Bs.find("div", attrs={"class": "caption"}).text).group(1).strip(" ")
         Buffer["MaxChapterNumber"] = int(Result)
         return Buffer
 
@@ -106,7 +106,7 @@ class Analyzer2(Analyzer):
 
 class Analyzer3(Analyzer):
     Finder_1 = re.compile("<p>.*?</p>")
-    __Logger = logging.getLogger(__name__ + ".Analyzer2")
+    __Logger = logging.getLogger(__name__ + ".Analyzer3")
 
     @classmethod
     def GetInfo(cls, Content: bs, Source: str) -> dict:
@@ -138,7 +138,7 @@ class Analyzer3(Analyzer):
 
 
 class Analyzer4(Analyzer):
-    __Logger = logging.getLogger(__name__ + ".Analyzer2")
+    __Logger = logging.getLogger(__name__ + ".Analyzer4")
 
     @classmethod
     def GetInfo(cls, Response: NetWork) -> dict:
@@ -190,14 +190,130 @@ class Analyzer6(Analyzer):
         return "\r\n".join(Text.split("\r\n")[1:])
 
 
+class Analyzer7(Analyzer):
+    Finder_1 = re.compile("<div.*?>.*?</div>")
+    @classmethod
+    def GetInfo(cls, Response: NetWork) -> dict:
+        return Analyzer.FindInfo(Response, {"class": "novel_list"})
+
+    @classmethod
+    def GetCatalogue(cls, Response: NetWork) -> list:
+        return Analyzer.FindChapterList(Response, {"class": "novel_list"})
+
+    @classmethod
+    def GetText(cls, Response: NetWork) -> str:
+        Text = Analyzer.FindText(Response, {"id": "content"})
+        Text = cls.Finder_1.split(Text)[1]
+        Text = Analyzer.TextNormalization(Text)
+        return Text
+
+
+class Analyzer8(Analyzer):
+    Finder_1 = re.compile("<p>.*?</p>")
+
+    @classmethod
+    def GetInfo(cls, Response: NetWork) -> dict:
+        return Analyzer.FindInfo(Response, {"class": "novel_list"})
+
+    @classmethod
+    def GetCatalogue(cls, Response: NetWork) -> list:
+        return Analyzer.FindChapterList(Response, {"class": "novel_list"})
+
+    @classmethod
+    def GetText(cls, Response: NetWork) -> str:
+        Text = Analyzer.FindText(Response, {"class": "content"})
+        Text = cls.Finder_1.split(Text)[0]
+        Text = Analyzer.TextNormalization(Text)
+        return "".join(Text.split("\r\n")[1:])
+
+
+class Analyzer9(Analyzer):
+    Finder_1 = re.compile("<p.*?>.*?</p>")
+
+    @classmethod
+    def GetInfo(cls, Response: NetWork) -> dict:
+        a = Analyzer.FindInfo(Response, {"class": "pc_list"}, "div", 1)
+        return Analyzer.FindInfo(Response, {"class": "pc_list"}, "div", 1)
+
+    @classmethod
+    def GetCatalogue(cls, Response: NetWork) -> list:
+        return Analyzer.FindChapterList(Response, {"class": "pc_list"}, "div", 1)
+
+    @classmethod
+    def GetText(cls, Response: NetWork) -> str:
+        Text = Analyzer.FindText(Response, {"id": "content1"})
+        Text = cls.Finder_1.split(Text)[1]
+        Text = Analyzer.TextNormalization(Text)
+        Text = "\r\n".join(["\t"+i for i in Text.split("\r\n")])
+        return Text
+
+
+class Analyzer10(Analyzer):
+    Finder_1 = re.compile("<div.*?>.*?</div>")
+
+    @classmethod
+    def GetInfo(cls, Response: NetWork) -> dict:
+        return Analyzer.FindInfo(Response, {"class": "showInfo"}, "div", 1)
+
+    @classmethod
+    def GetCatalogue(cls, Response: NetWork) -> list:
+        return Analyzer.FindChapterList(Response, {"class": "showInfo"}, "div", 1)
+
+    @classmethod
+    def GetText(cls, Response: NetWork) -> str:
+        Text = Analyzer.FindText(Response, {"id": "content"})
+        Text = cls.Finder_1.split(Text)[1]
+        Text = Analyzer.TextNormalization(Text)
+        return "".join(Text.split("\r\n")[:-1])
+
+
+class Analyzer11(Analyzer):
+    Finder_1 = re.compile("<dt>.*?</dt>")
+    Finder_2 = re.compile("<div.*?>.*?</div>")
+    Finder_3 = re.compile("<script>.*?</script>")
+
+    @classmethod
+    def GetInfo(cls, Response: NetWork) -> dict:
+        Response.SetEncoding("GBK")
+        HTML = Response.Bs
+        ListText = str(HTML.find("div", attrs={"class": "listmain"}).find("dl")).lstrip("<dl>").rstrip("</dl>")
+        List = bs(cls.Finder_1.split(ListText)[2], "lxml").find_all("dd")
+        return {"BookName": HTML.find("h1").text, "MaxChapterNumber": len(List)}
+
+    @classmethod
+    def GetCatalogue(cls, Response: NetWork) -> list:
+        Response.SetEncoding("GBK")
+        HTML = Response.Bs
+        ListText = str(HTML.find("div", attrs={"class": "listmain"}).find("dl")).lstrip("<dl>").rstrip("</dl>")
+        List = bs(cls.Finder_1.split(ListText)[2], "lxml").find_all("a")
+        for i in List:
+            Data = (i.text, Response.GetNextUrl(i.get("href")))
+            yield Data
+
+    @classmethod
+    def GetText(cls, Response: NetWork) -> str:
+        Response.SetEncoding("GBK")
+        Text = Analyzer.FindText(Response, {"id": "content"})
+        Text = cls.Finder_2.split(Text)[1].replace("\r", "")\
+            .replace("<br/>", "\n").replace("\xa0", " ")\
+            .replace("    ", "\t").replace("\t\t", "\t").replace(" ", "").replace("\n\n", "\n")
+        Text = cls.Finder_3.split(Text)[0]
+        return Text.rstrip("\n")
+
+
+
 MAP = {
     "www.rmxsba.com": Analyzer1,
-    "www.kubiji.net": Analyzer1,
     "www.yunxs.com": Analyzer2,
     "www.jingcaiyuedu6.com": Analyzer3,
     "www.81zw.com": Analyzer4,
     "www.biquwx.la": Analyzer4,
     "www.luoxiabook.com": Analyzer5,
     "www.yueshuxsw.com": Analyzer6,
+    "www.xfjxs.com": Analyzer7,
+    "www.kubiji.net": Analyzer8,
+    "www.kankezw.com": Analyzer9,
+    "www.wurexs.com": Analyzer10,
+    "www.zhhtxt.com": Analyzer11
 }
 

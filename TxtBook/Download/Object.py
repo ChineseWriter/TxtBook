@@ -28,6 +28,7 @@ class NetWork(object):
         self.__Response = None
         self.__Content = None
         self.__Retry = Retry
+        self.__Encoding = None
         self.__Get(Headers, DealException)
 
     def __Get(self, Headers: dict, DealException) -> None:
@@ -54,6 +55,7 @@ class NetWork(object):
             return False
         else:
             self.__Content = self.__Response.content
+            self.__Encoding = chardet.detect(self.__Content)["encoding"]
             return True
 
     def GetNextUrl(self, Href: str) -> str:
@@ -64,6 +66,10 @@ class NetWork(object):
             return Parse.scheme + "://" + Parse.netloc + Href
         else:
             return self.__Url + Href
+
+    def SetEncoding(self, Encoding):
+        self.__Encoding = Encoding
+        return None
 
     @property
     def Url(self) -> str:
@@ -81,7 +87,7 @@ class NetWork(object):
     def Text(self) -> str:
         self.__Content: bytes
         try:
-            return self.__Content.decode(chardet.detect(self.__Content)["encode"])
+            return self.__Content.decode(self.__Encoding)
         except UnicodeDecodeError:
             return self.__Response.text
 
@@ -89,14 +95,13 @@ class NetWork(object):
     def Bs(self) -> bs:
         self.__Content: bytes
         try:
-            return bs(self.__Content.decode(chardet.detect(self.__Content)["encoding"]), "lxml")
+            return bs(self.__Content.decode(self.__Encoding), "lxml")
         except UnicodeDecodeError:
             return bs(self.__Response.text, "lxml")
 
     @property
     def Encode(self):
-        self.__Content: bytes
-        return chardet.detect(self.__Content)["encoding"]
+        return self.__Encoding
 
     @property
     def Language(self):
@@ -130,14 +135,14 @@ class Analyzer(object):
         return DealtText
 
     @staticmethod
-    def FindInfo(Response: NetWork, Attrs: dict, Element: str = "div") -> dict:
-        MaxChapterNumber = len(Response.Bs.find(Element, attrs=Attrs).find_all("a"))
+    def FindInfo(Response: NetWork, Attrs: dict, Element: str = "div", Number: int = 0) -> dict:
+        MaxChapterNumber = len(Response.Bs.find_all(Element, attrs=Attrs)[Number].find_all("a"))
         BookName = Response.Bs.find("h1").text
         return {"BookName": BookName, "MaxChapterNumber": MaxChapterNumber}
 
     @staticmethod
-    def FindChapterList(Response: NetWork, Attrs: dict, Element: str = "div"):
-        ChapterList = Response.Bs.find(Element, attrs=Attrs).find_all("a")
+    def FindChapterList(Response: NetWork, Attrs: dict, Element: str = "div", Number: int = 0):
+        ChapterList = Response.Bs.find_all(Element, attrs=Attrs)[Number].find_all("a")
         for i in ChapterList:
             Data = (i.text, Response.GetNextUrl(i.get("href")))
             yield Data

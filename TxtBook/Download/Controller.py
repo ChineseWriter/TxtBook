@@ -12,7 +12,6 @@ from .Engines import MAP
 from .Object import NetWork
 
 
-
 def DownloadChapters(Source: str):
     Logger = logging.getLogger(__name__ + ".DownloadChapters")
     ParsedResult = urlparse(Source)
